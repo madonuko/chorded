@@ -1,0 +1,39 @@
+---
+interface Props {
+  original: string;
+  converted: string;
+  notes: string;
+  duration: number;
+  isRest: boolean;
+}
+
+const { original, converted, notes, duration, isRest } = Astro.props;
+---
+
+<div 
+  class="relative group inline-flex flex-col items-center cursor-help"
+  data-notes={notes}
+  data-original={original}
+>
+  <div class={`
+    px-3 py-2 rounded-lg transition-all duration-200
+    ${isRest 
+      ? 'bg-gray-100 text-gray-400' 
+      : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-900'
+    }
+  `}>
+    <span class="font-medium">{isRest ? '—' : converted}</span>
+    <span class="text-xs ml-1 opacity-60">{duration}</span>
+  </div>
+  
+  <div class="
+    absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+    px-3 py-2 bg-gray-900 text-white text-sm rounded-lg
+    opacity-0 invisible group-hover:opacity-100 group-hover:visible
+    transition-all duration-200 whitespace-nowrap z-10
+    shadow-lg
+  ">
+    <div class="font-medium text-xs text-gray-400 mb-1">{original}</div>
+    <div>{notes}</div>
+  </div>
+</div>
