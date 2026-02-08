@@ -56,8 +56,8 @@ const modifiers: ((orig: ModArg) => ModArg | string | undefined)[] = [
 
 export default class RegularChordNotation implements ChordNotation {
   name = {
-    "en": "Regular Chord Notation",
-    "ja": "ギターコード表記"
+    "en": "Regular",
+    "ja": "西洋・ギター"
   };
   depKey = false;
 
@@ -78,7 +78,7 @@ export default class RegularChordNotation implements ChordNotation {
       }
       if (done) continue;
       const { semi, remain: new_remain } = csmTension(remain);
-      if (!semi) return "unexpected suffix";
+      if (!semi) return `unexpected suffix (remain: ${new_remain})`;
       remain = new_remain;
       notes = [...notes, ...semi];
     }
@@ -87,14 +87,14 @@ export default class RegularChordNotation implements ChordNotation {
   }
 
   showNotes(s: string, chord: Chord): string {
-    let add = [], omit = [];
-    let notes = chord.notes.map(n => n.minus(chord.base)).sort();
+    let add: string[] = [], omit = [];
+    let notes = chord.notes.map(n => n.minus(chord.base));
     const hasNote = Array(22).fill(false);
     notes.forEach(n => hasNote[n] = true);
     const [min, maj] = hasNote.slice(3, 5);
     const [dp, fifth, aug, sixth] = hasNote.slice(6, 10);
     notes = notes.filter(n => ![3, 4, 6, 7, 8, 9].includes(n));
-    const bits = +min << 5 + +maj << 4 + +dp << 3 + +fifth << 2 + +aug << 1 + +sixth;
+    const bits = (+min << 5) + (+maj << 4) + (+dp << 3) + (+fifth << 2) + (+aug << 1) + +sixth;
     // _, 6, aug, aug6, 5, 56, aug5, aug56
     const lookup = [
       [''], ['6'], ['aug'], ['aug6'], [''], ['6'], ['', '♯5'], ['6', '♯5'], // _
@@ -108,7 +108,7 @@ export default class RegularChordNotation implements ChordNotation {
     ];
     const found = lookup[bits];
     s += found.shift();
-    add.push(...found);
+    add.push(...found); // BUG: after this push() somehow add has `undefined` elements
     if (!min && !maj) {
       const sus2 = hasNote[2], sus4 = hasNote[5];
       if (sus2 || sus4) s += ['', 'sus2', 'sus4', 'sus(2,4)'][+sus4 << 1 + +sus2];
@@ -116,7 +116,7 @@ export default class RegularChordNotation implements ChordNotation {
       notes = notes.filter(n => ![2, 5].includes(n));
     }
     if (!dp && !fifth && !aug) omit.push(5);
-    const tbits = +hasNote[10] << 4 + +hasNote[11] << 3 + +hasNote[14] << 2 + +hasNote[17] << 1 + +hasNote[21];
+    const tbits = (+hasNote[10] << 4) + (+hasNote[11] << 3) + (+hasNote[14] << 2) + (+hasNote[17] << 1) + +hasNote[21];
     const tlookup = [
       [], ['', 13], ['', 11], ['', 11, 13],
       ['', 9], ['', 9, 13], ['', 9, 11], ['', 9, 11, 13],
@@ -126,22 +126,25 @@ export default class RegularChordNotation implements ChordNotation {
       [9], [9, 13], [11], [13],
     ];
     s += tlookup[tbits].shift()?.toString() ?? '';
-    add.push(...`${tlookup[tbits]}`);
+    add.push(...tlookup[tbits].map(n => n.toString()));
     notes = notes.filter(n => ![10, 11, 14, 17, 21].includes(n));
     add.push(...notes.map(numNote));
-    if (add.sort().some(n => ['♭5', '5', '♯5'].includes(n))) {
-      s += 'add';
-    }
-    s += '(' + add.join(',') + ')';
+    add = add.filter(n => n?.length);
+    if (add.some(n => ['♭5', '5', '♯5'].includes(n))) s += 'add';
+    if (add.length) s += '(' + add.join(',') + ')';
     return s;
   }
 
   parse(s: string, _key: Note): Chord | string | undefined {
-    let { note: base, remain } = csmNote(s, 1); // TODO: custom octave
+    let { note: base, remain } = csmNote(s); // TODO: custom octave
     if (!base) return;
-    const notes = this.hdlNotes(remain);
-    if (typeof notes === 'string') return notes;
-    return new Chord(base, notes.map(n => base.transpose(n)));
+    const ret = this.hdlNotes(remain);
+    if (typeof ret === 'string') return ret;
+    const notes = ret.map(n => {
+      const note = base.transpose(n).toNormalized();
+      return note;
+    });
+    return new Chord(base, notes);
   }
 
   display(chord: Chord, _key: Note): string {

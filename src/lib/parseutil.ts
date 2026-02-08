@@ -19,12 +19,18 @@ export const chbetween = (ch: string, left: string, right: string) => left <= ch
  * @param s the string to consume
  * @param octave specify potential octave of note
  */
-export function csmNote(s: string, octave?: number): { note?: Note, remain: string } {
-    const base = "CDEFGAB".indexOf(s);
-    if (base === -1) return { remain: s };
-    const end = s.slice(1).split('').findIndex(ch => !'#♯b♭♮'.includes(ch));
+export function csmNote(s: string, octave: number = 4): { note?: Note, remain: string } {
+    if (!chbetween(s[0], 'A', 'G')) return { remain: s };
+    const base = "C D EF G A B".indexOf(s[0]);
+    let end = s.slice(1).split('').findIndex(ch => !'#♯b♭♮'.includes(ch));
+    end = end === -1 ? s.length : end + 1;
+    let value = base + semitonesFromAccidentals(s.slice(1, end));
+    while (value < 0) {
+        value += 12;
+        octave -= 1;
+    }
     return {
-        note: new Note(base * 2 + semitonesFromAccidentals(s.slice(1, end)), s.slice(1, end), octave),
+        note: new Note(value, s.slice(0, end), octave),
         remain: s.slice(end),
     };
 }
@@ -33,9 +39,10 @@ export const numNoteLookup = [0, 2, 4, 5, 7, 9, 11];
 
 export function csmNumNote(s: string): { semi?: number, remain: string } {
     const i = s.split('').findIndex(ch => !'#♯b♭♮'.includes(ch));
-    if (i === -1) return { remain: s };
-    const j = s.slice(i).split('').findIndex(ch => !chbetween(ch, '0', '9'));
-    if (j <= 0 || s[j] === '0') return { remain: s };
+    if (i === -1 || s[i] === '0') return { remain: s };
+    let j = s.slice(i).split('').findIndex(ch => !chbetween(ch, '0', '9'));
+    if (j === 0) return { remain: s };
+    j = j === -1 ? s.length : i + j;
     const num = parseInt(s.slice(i, j)) - 1;
     numNoteLookup[num % 7] + 12 * Math.floor(num / 7);
     const semi = semitonesFromAccidentals(s.slice(0, i)) + parseInt(s.slice(i, j)) * 2 - 2;

@@ -5,8 +5,8 @@ import RegularChordNotation from './regular';
 
 export default class RomanChordNotation extends RegularChordNotation implements ChordNotation {
   name = {
-    "en": "Roman Chord Notation",
-    "ja": "ローマコード表記"
+    "en": "Roman Numerals",
+    "ja": "ローマ",
   };
   depKey = true;
 
@@ -36,10 +36,15 @@ export default class RomanChordNotation extends RegularChordNotation implements 
     const end = remain.split('').findIndex(ch => !'#♯b♭♮'.includes(ch));
     semi += semitonesFromAccidentals(remain.slice(0, end));
     const base = key.transpose(semi);
-    let notes = this.hdlNotes(remain.slice(end));
-    if (typeof notes === 'string') return notes;
-    if ('iv'.includes(s[0])) notes = notes.map(n => n === 4 ? 3 : n);
-    return new Chord(base, notes.map(n => base.transpose(n)));
+    let ret = this.hdlNotes(remain.slice(end));
+    if (typeof ret === 'string') return ret;
+    if ('iv'.includes(s[0])) ret = ret.map(n => n === 4 ? 3 : n);
+    const notes = ret.map(n => {
+      const note = base.transpose(n).toNormalized();
+      note.octave += 2;
+      return note;
+    });
+    return new Chord(base, notes);
   }
 
   display(chord: Chord, key: Note): string {

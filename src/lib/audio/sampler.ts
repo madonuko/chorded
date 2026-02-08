@@ -1,8 +1,9 @@
-import type { Note } from '../note';
+import { Note } from '../note';
 
 interface SampleInfo {
   note: string;
   octave: number;
+  value: number;
   path: string;
   buffer?: AudioBuffer;
 }
@@ -12,12 +13,6 @@ const SAMPLE_GROUPS: Record<string, string[]> = {
   'C': ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8'],
   'D#': ['D#1', 'D#2', 'D#3', 'D#4', 'D#5', 'D#6', 'D#7'],
   'F#': ['F#1', 'F#2', 'F#3', 'F#4', 'F#5', 'F#6', 'F#7'],
-};
-
-const NOTE_SEMITONES: Record<string, number> = {
-  'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
-  'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8,
-  'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11
 };
 
 export class PianoSampler {
@@ -34,9 +29,12 @@ export class PianoSampler {
         const match = sampleName.match(/^([A-G][#b]?)(\d+)$/);
         if (match) {
           const octave = parseInt(match[2]);
+          const noteobj = Note.parse(match[1]);
+          if (noteobj === undefined) throw Error(`bad note: ${match[1]}`);
           this.availableSamples.push({
             note,
             octave,
+            value: noteobj.value,
             path: `/piano/${sampleName}v12.ogg`
           });
         }
@@ -52,26 +50,14 @@ export class PianoSampler {
     return this.audioContext;
   }
 
-  private normalizeNote(noteStr: string): string {
-    const normalized = noteStr.replace('b', '#').replace('♭', '#').replace('♯', '#');
-    if (['Db', 'EB', 'Gb', 'Ab', 'Bb'].includes(normalized)) {
-      const map: Record<string, string> = { 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#' };
-      return map[normalized] || normalized;
-    }
-    return normalized.replace('E#', 'F').replace('B#', 'C').replace('Fb', 'E').replace('Cb', 'B');
-  }
-
   private getClosestSample(targetNote: Note): SampleInfo {
-    const normalizedTarget = this.normalizeNote(targetNote.toString());
-    const targetSemitones = NOTE_SEMITONES[normalizedTarget] ?? 0;
-    const targetAbsolute = targetSemitones + (targetNote.octave - 1) * 12;
+    const targetAbsolute = targetNote.value + (targetNote.octave - 1) * 12;
 
     let bestMatch = this.availableSamples[0];
     let bestDistance = Infinity;
 
     for (const sample of this.availableSamples) {
-      const sampleSemitones = NOTE_SEMITONES[sample.note] ?? 0;
-      const sampleAbsolute = sampleSemitones + (sample.octave - 1) * 12;
+      const sampleAbsolute = sample.value + (sample.octave - 1) * 12;
       const distance = Math.abs(targetAbsolute - sampleAbsolute);
 
       if (distance < bestDistance) {
@@ -142,12 +128,8 @@ export class PianoSampler {
     const source = ctx.createBufferSource();
     source.buffer = buffer;
 
-    const normalizedSample = this.normalizeNote(sample.note);
-    const normalizedTarget = this.normalizeNote(note.toString());
-    const sampleSemitones = NOTE_SEMITONES[normalizedSample] ?? 0;
-    const targetSemitones = NOTE_SEMITONES[normalizedTarget] ?? 0;
-    const sampleAbsolute = sampleSemitones + (sample.octave - 1) * 12;
-    const targetAbsolute = targetSemitones + (note.octave - 1) * 12;
+    const sampleAbsolute = sample.value + (sample.octave - 1) * 12;
+    const targetAbsolute = note.value + (note.octave - 1) * 12;
     const semitoneShift = targetAbsolute - sampleAbsolute;
 
     if (semitoneShift !== 0) {

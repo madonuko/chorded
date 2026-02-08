@@ -39,7 +39,7 @@ export class Note {
     const add = semitones > 0 ? '♯'.repeat(semitones) : '♭'.repeat(-semitones);
     const value = (this.value + semitones) % 12;
 
-    return new Note(value > 0 ? value : value + 12, this.orig + add, newOctave);
+    return new Note(value > 0 ? value : value + 12, this.orig + add, value > 0 ? newOctave : newOctave - 1);
   }
 
   static fromInterval(root: Note, interval: string): Note | undefined {
@@ -55,12 +55,18 @@ export class Note {
   }
 
   norm(): string {
-    return "CDEFGAB"[this.value / 2] + "♯".repeat(this.value % 2);
+    return ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'][this.value % 12];
+  }
+
+  toNormalized(): Note {
+    const note = this.clone();
+    note.orig = note.norm();
+    return note;
   }
 
   /** calculate semitones for (this - other) */
   minus(other: Note) {
-    return this.value - other.value;
+    return this.value + this.octave * 12 - other.value - other.octave * 12;
   }
 }
 

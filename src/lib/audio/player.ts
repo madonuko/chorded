@@ -49,7 +49,7 @@ export async function playChords(
 
           onNoteStart?.(noteNames);
 
-          await sampler.playNotes(chordNotes, chordDuration);
+          await sampler.playNotes(chordNotes, chordDuration * 2);
 
           onNoteEnd?.();
         }, delay * 1000);
@@ -69,7 +69,7 @@ export async function playChords(
     if (j && j !== -1) {
       sampler?.stopped.splice(j, 1);
     }
-  })
+  }, delay);
 }
 
 export function stopPlayback(): void {

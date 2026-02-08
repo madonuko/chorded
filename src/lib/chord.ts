@@ -24,7 +24,9 @@ export class Chord {
   }
 
   getNotes(): Note[] {
-    return [this.base, ...this.notes];
+    const base = this.base.clone();
+    base.octave = 2;
+    return [base, ...this.notes]
   }
 }
 
