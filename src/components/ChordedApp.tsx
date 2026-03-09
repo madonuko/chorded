@@ -326,7 +326,7 @@ export default function ChordedApp() {
                       title={notes}
                     >
                       {display}
-                      <span className="text-xs ml-1 opacity-60">{formatBeatDuration(item.duration)}</span>
+                      <span className="text-xs ml-1 opacity-60 select-none">{formatBeatDuration(item.duration)}</span>
                     </span>
                   );
                 }
@@ -348,11 +348,6 @@ export default function ChordedApp() {
             <span key={note} className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">{note}</span>
           ))}
         </div>
-      </div>
-
-      <div className="text-sm text-gray-500">
-        <p><strong>Syntax:</strong> Space-separated chords, <code className="bg-gray-100 px-1 rounded">|</code> for bar lines, <code className="bg-gray-100 px-1 rounded">~</code> to extend duration, <code className="bg-gray-100 px-1 rounded">_</code> for rest</p>
-        <p className="mt-1">Hover over chords to see their notes.</p>
       </div>
     </div>
   );

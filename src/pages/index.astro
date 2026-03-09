@@ -18,6 +18,11 @@ import ChordedApp from '../components/ChordedApp';
       </header>
 
       <ChordedApp client:only="react" />
+
+      <div class="text-sm text-gray-500 py-8">
+        <p><strong>Syntax:</strong> Space-separated chords, <code class="bg-gray-100 px-1 rounded">|</code> for bar lines, <code class="bg-gray-100 px-1 rounded">~</code> to extend duration, <code class="bg-gray-100 px-1 rounded">_</code> for rest</p>
+        <p class="mt-1">Hover over chords to see their notes.</p>
+      </div>
     </div>
   </body>
 </html>

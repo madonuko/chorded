@@ -48,6 +48,6 @@ export default class RomanChordNotation extends RegularChordNotation implements 
   }
 
   display(chord: Chord, key: Note): string {
-    return this.showNotes(['I', 'I♯', 'II', 'III♭', 'III', 'IV', 'V♭', 'V', '♯V', 'VI', 'VII♭', 'VII'][chord.base.minus(key)], chord);
+    return this.showNotes(['I', 'I♯', 'II', 'III♭', 'III', 'IV', 'V♭', 'V', '♯V', 'VI', 'VII♭', 'VII'][chord.base.diff12(key)], chord);
   }
 }

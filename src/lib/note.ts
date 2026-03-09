@@ -68,6 +68,10 @@ export class Note {
   minus(other: Note) {
     return this.value + this.octave * 12 - other.value - other.octave * 12;
   }
+
+  diff12(other: Note) {
+    return (this.value + 12 - other.value) % 12;
+  }
 }
 
 export function normalizeNoteName(note: string): string | undefined {
