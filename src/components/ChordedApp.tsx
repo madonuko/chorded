@@ -4,7 +4,7 @@ import type { ParsedChord, ParsedInput } from '../lib/parser';
 import { formatChordNotes, type ChordNotation, Chord, NOTATIONS } from '../lib/chord';
 import { Note } from '../lib/note';
 import { semitonesFromAccidentals } from '../lib/parseutil';
-import { initPiano, playChords, stopPlayback } from '../lib/audio/player';
+import { initPiano, playChords, setClickEnabled, stopPlayback } from '../lib/audio/player';
 import RegularChordNotation from '../lib/notations/regular';
 import RomanChordNotation from '../lib/notations/roman';
 
@@ -42,6 +42,7 @@ function buildParsedInput(
   notation: ChordNotation,
   key: Note
 ): ParsedInput {
+  const keyName = key.toString();
   const normalizedInput = input.replace(/\n/g, ' ');
   const tokens = normalizedInput.split(/\s+/).filter(t => t.length > 0);
   const barBeats = Math.max(1, beatsInBar);
@@ -102,7 +103,7 @@ function buildParsedInput(
 
       let chord: Chord | null = null;
       if (notation.parse) {
-        const parsed = notation.parse(chordToken, key);
+        const parsed = notation.parse(chordToken, keyName);
         if (parsed instanceof Chord) {
           chord = parsed;
         } else if (typeof parsed === 'string') {
@@ -141,8 +142,8 @@ export default function ChordedApp() {
   const [input, setInput] = useState(DEFAULT_INPUT);
   const [fromNotation, setFromNotation] = useState(notations[0].name.en);
   const [toNotation, setToNotation] = useState(notations[0].name.en);
-  const [activeNotes, setActiveNotes] = useState<string[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isClickEnabled, setIsClickEnabled] = useState(false);
 
   const beatsInBarValue = useMemo(() => {
     const parsed = parseInt(beatsInBar, 10);
@@ -195,8 +196,7 @@ export default function ChordedApp() {
         parsed,
         { root: keyNote, type: 'minor', notes: [] },
         parseInt(bpm, 10) || DEFAULT_BPM,
-        (notes) => setActiveNotes(notes),
-        () => setActiveNotes([])
+        beatsInBarValue
       );
     } catch (err) {
       console.error('Playback error:', err);
@@ -208,7 +208,6 @@ export default function ChordedApp() {
   const stop = useCallback(() => {
     stopPlayback();
     setIsPlaying(false);
-    setActiveNotes([]);
   }, []);
 
   return (
@@ -217,10 +216,11 @@ export default function ChordedApp() {
         <div className="md:col-span-5">
           <label className="block text-sm font-medium text-gray-700 mb-2">Key</label>
           <div className="grid grid-cols-[repeat(15,minmax(0,1fr))] gap-1">
-            {KEYS.map(natural => {
+            {KEYS.map((natural, idx) => {
               if (natural.length == 1) {
                 return (
                   <button
+                    key={`key-${idx}`}
                     type="button"
                     onClick={() => setKey(natural[0])}
                     className={`h-12 rounded-lg border text-sm font-medium ${key === natural[0] ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
@@ -230,7 +230,7 @@ export default function ChordedApp() {
                 );
               }
               return (
-                <div className="flex flex-col overflow-hidden rounded-lg border border-gray-300">
+                <div key={`key-${idx}`} className="flex flex-col overflow-hidden rounded-lg border border-gray-300">
                   <button
                     type="button"
                     onClick={() => setKey(natural[0])}
@@ -273,6 +273,23 @@ export default function ChordedApp() {
             onChange={(event) => setBeatsInBar(event.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Click Track</label>
+          <button
+            type="button"
+            onClick={() => {
+              setIsClickEnabled((prev) => {
+                const next = !prev;
+                setClickEnabled(next);
+                return next;
+              });
+            }}
+            className={`w-full px-3 py-2 rounded-lg border font-medium ${isClickEnabled ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+          >
+            {isClickEnabled ? 'On' : 'Off'}
+          </button>
         </div>
 
         <div>
@@ -347,7 +364,6 @@ export default function ChordedApp() {
                     const regular = new RegularChordNotation();
                     display = regular.display(item.chord, key);
                   }
-                  console.log(item.chord);
                   const notes = formatChordNotes(item.chord.getNotes());
                   return (
                     <span
@@ -371,14 +387,6 @@ export default function ChordedApp() {
         </div>
       </div>
 
-      <div className="p-4 bg-white rounded-lg border border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Active Notes</h2>
-        <div className="flex gap-2 flex-wrap min-h-[40px]">
-          {activeNotes.map(note => (
-            <span key={note} className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">{note}</span>
-          ))}
-        </div>
-      </div>
     </div >
   );
 }

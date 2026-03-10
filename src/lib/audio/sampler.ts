@@ -110,7 +110,7 @@ export class PianoSampler {
     await Promise.all(promises);
   }
 
-  async playNote(note: Note, duration: number = 1.0, velocity: number = 0.7): Promise<void> {
+  async playNoteAt(note: Note, startTime: number, duration: number = 1.0, velocity: number = 0.7): Promise<void> {
     const ctx = this.getAudioContext();
     if (ctx.state === 'suspended') {
       await ctx.resume();
@@ -142,20 +142,16 @@ export class PianoSampler {
     source.connect(gainNode);
     gainNode.connect(ctx.destination);
 
-    const now = ctx.currentTime;
-    source.start(now);
-
     const releaseTime = Math.min(duration * 0.8, 0.8);
-    gainNode.gain.setValueAtTime(velocity * 0.5, now + duration - releaseTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    gainNode.gain.setValueAtTime(velocity * 0.5, startTime + duration - releaseTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
 
-    source.stop(now + duration);
+    source.start(startTime);
+    source.stop(startTime + duration);
   }
 
-  async playNotes(notes: Note[], duration: number): Promise<void> {
-    for (const note of notes) {
-      await this.playNote(note, duration);
-    }
+  async playNotesAt(notes: Note[], startTime: number, duration: number): Promise<void> {
+    await Promise.all(notes.map(note => this.playNoteAt(note, startTime, duration)));
   }
 
   stopAll(): void {
