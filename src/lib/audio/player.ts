@@ -60,16 +60,16 @@ export async function playChords(
   setTimeout(() => {
     const i = sampler?.started.indexOf(id);
 
-    if (i && i !== -1) {
+    if (i !== undefined && i !== -1) {
       sampler?.started.splice(i, 1);
     }
 
     const j = sampler?.stopped.indexOf(id);
 
-    if (j && j !== -1) {
+    if (j !== undefined && j !== -1) {
       sampler?.stopped.splice(j, 1);
     }
-  }, delay);
+  }, delay * 1000);
 }
 
 export function stopPlayback(): void {

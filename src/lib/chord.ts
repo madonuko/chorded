@@ -1,4 +1,5 @@
 import RegularChordNotation from './notations/regular';
+import RomanChordNotation from './notations/roman';
 import { Note } from './note';
 
 export interface ChordNotation {
@@ -10,8 +11,8 @@ export interface ChordNotation {
    *  @param s the chord as a trimmed string
    *  @param key the current key (scale major assumed)
    * */
-  parse?(s: string, key: Note): Chord | string | undefined;
-  display?(chord: Chord, key: Note): string;
+  parse?(s: string, key: string): Chord | string | undefined;
+  display?(chord: Chord, key: string): string;
 }
 
 export class Chord {
@@ -34,4 +35,4 @@ export function formatChordNotes(notes: Note[]): string {
   return notes.map(n => n.toString()).join(', ');
 }
 
-export const NOTATIONS: ChordNotation[] = [new RegularChordNotation];
+export const NOTATIONS: ChordNotation[] = [new RegularChordNotation, new RomanChordNotation];

@@ -1,7 +1,16 @@
 // vi: ts=2 sw=2
 import { Chord, type ChordNotation } from "../chord";
-import { Note } from "../note";
 import { csmNote, csmNumNotes, csmTension, lookup, numNote, type ModArg } from "../parseutil";
+
+const flatKeys = new Set(['F', 'B♭', 'E♭', 'A♭', 'D♭', 'G♭', 'C♭']);
+const flatNoteNames = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B'];
+
+const normalizeKeyName = (key: string): string => {
+  if (!key) return key;
+  const letter = key[0]?.toUpperCase() ?? '';
+  const rest = key.slice(1).replace(/#/g, '♯').replace(/b/g, '♭');
+  return `${letter}${rest}`;
+};
 
 const modifiers: ((orig: ModArg) => ModArg | string | undefined)[] = [
   ({ s, notes }) => {
@@ -135,7 +144,7 @@ export default class RegularChordNotation implements ChordNotation {
     return s;
   }
 
-  parse(s: string, _key: Note): Chord | string | undefined {
+  parse(s: string, _key: string): Chord | string | undefined {
     let { note: base, remain } = csmNote(s); // TODO: custom octave
     if (!base) return;
     const ret = this.hdlNotes(remain);
@@ -147,7 +156,10 @@ export default class RegularChordNotation implements ChordNotation {
     return new Chord(base, notes);
   }
 
-  display(chord: Chord, _key: Note): string {
-    return this.showNotes(chord.base.norm(), chord);
+  display(chord: Chord, key: string): string {
+    const normalizedKey = normalizeKeyName(key);
+    const preferFlats = flatKeys.has(normalizedKey);
+    const baseName = preferFlats ? flatNoteNames[chord.base.value % 12] : chord.base.norm();
+    return this.showNotes(baseName, chord);
   }
 }

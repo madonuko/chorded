@@ -1,7 +1,16 @@
 import { Chord, type ChordNotation } from '../chord';
-import type { Note } from '../note';
+import { Note } from '../note';
 import { semitonesFromAccidentals } from '../parseutil';
 import RegularChordNotation from './regular';
+
+const flatKeys = new Set(['F', 'B♭', 'E♭', 'A♭', 'D♭', 'G♭', 'C♭']);
+
+const normalizeKeyName = (key: string): string => {
+  if (!key) return key;
+  const letter = key[0]?.toUpperCase() ?? '';
+  const rest = key.slice(1).replace(/#/g, '♯').replace(/b/g, '♭');
+  return `${letter}${rest}`;
+};
 
 export default class RomanChordNotation extends RegularChordNotation implements ChordNotation {
   name = {
@@ -29,13 +38,13 @@ export default class RomanChordNotation extends RegularChordNotation implements 
     return { s };
   }
 
-  parse(s: string, key: Note): Chord | string | undefined {
+  parse(s: string, key: string): Chord | string | undefined {
     let { semi, s: remain } = this.parseRoman(s.toUpperCase());
     if (semi === undefined) return;
     remain = s.slice(s.length - remain.length);
     const end = remain.split('').findIndex(ch => !'#♯b♭♮'.includes(ch));
     semi += semitonesFromAccidentals(remain.slice(0, end));
-    const base = key.transpose(semi);
+    const base = Note.parse(key)!.transpose(semi);
     let ret = this.hdlNotes(remain.slice(end));
     if (typeof ret === 'string') return ret;
     if ('iv'.includes(s[0])) ret = ret.map(n => n === 4 ? 3 : n);
@@ -47,7 +56,13 @@ export default class RomanChordNotation extends RegularChordNotation implements 
     return new Chord(base, notes);
   }
 
-  display(chord: Chord, key: Note): string {
-    return this.showNotes(['I', 'I♯', 'II', 'III♭', 'III', 'IV', 'V♭', 'V', 'V♯', 'VI', 'VII♭', 'VII'][chord.base.diff12(key)], chord);
+  display(chord: Chord, key: string): string {
+    const normalizedKey = normalizeKeyName(key);
+    const keyNote = Note.parse(normalizedKey) ?? Note.parse(key) ?? chord.base;
+    const preferFlats = flatKeys.has(normalizedKey);
+    const lookup = preferFlats
+      ? ['I', 'II♭', 'II', 'III♭', 'III', 'IV', 'V♭', 'V', 'VI♭', 'VI', 'VII♭', 'VII']
+      : ['I', 'I♯', 'II', 'III♭', 'III', 'IV', 'V♭', 'V', 'V♯', 'VI', 'VII♭', 'VII'];
+    return this.showNotes(lookup[chord.base.diff12(keyNote)], chord);
   }
 }

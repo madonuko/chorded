@@ -1,19 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { ParsedChord, ParsedInput } from '../lib/parser';
-import { formatChordNotes, type ChordNotation, Chord } from '../lib/chord';
+import { formatChordNotes, type ChordNotation, Chord, NOTATIONS } from '../lib/chord';
 import { Note } from '../lib/note';
 import { semitonesFromAccidentals } from '../lib/parseutil';
 import { initPiano, playChords, stopPlayback } from '../lib/audio/player';
 import RegularChordNotation from '../lib/notations/regular';
 import RomanChordNotation from '../lib/notations/roman';
 
-const KEY_OPTIONS = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
+const KEYS = [['G♯', 'A♭'], ['A'], ['A♯', 'B♭'], ['B', 'C♭'], ['C'], ['C♯', 'D♭'], ['D'], ['D♯', 'E♭'], ['E'], ['F'], ['F♯', 'G♭'], ['G'], ['G♯', 'A♭']];
 
 const DEFAULT_KEY = 'A';
 const DEFAULT_BPM = 135;
 const DEFAULT_BEATS_IN_BAR = 4;
-const DEFAULT_INPUT = 'Fm7 G7 | Cm7 ~ ~ Cbm7 Bbm7 ~ Eb9 ~ |\nAb△7 G9 | Cm7 ~ Bbm7 Eb9 |\nFm7 Bm7 | Dm7♭5 Gaug7 Cm7 Eb9 |\nAbM7 Bb7 Eb C7';
+const DEFAULT_INPUT = 'Fm7 G7 | Cm7 ~ ~ Cbm7 Bbm7 ~ Eb9 ~ |\nAb△7 G9 | Cm7 ~ Bbm7 Eb9 |\nFm7 Bbm7 | Dm7♭5 Gaug7 Cm7 Eb9 |\nAbM7 Bb7 | Eb C7';
 
 function parseKeyNote(key: string): Note {
   const baseIndex = 'CDEFGAB'.indexOf(key[0]);
@@ -27,9 +27,9 @@ function parseKeyNote(key: string): Note {
 function formatBeatDuration(duration: number): string {
   const beats = duration;
   if (beats === 1) return '1';
-  if (beats === 0.5) return '1/2';
-  if (beats === 0.25) return '1/4';
-  if (beats === 1.5) return '1 1/2';
+  if (beats === 0.5) return '½';
+  if (beats === 0.25) return '¼';
+  if (beats === 1.5) return '1½';
   if (beats === 2) return '2';
   if (beats === 3) return '3';
   if (beats === 4) return '4';
@@ -133,7 +133,7 @@ function buildParsedInput(
 }
 
 export default function ChordedApp() {
-  const notations = useMemo(() => [new RegularChordNotation(), new RomanChordNotation()], []);
+  const notations = useMemo(() => NOTATIONS, []);
 
   const [key, setKey] = useState(DEFAULT_KEY);
   const [bpm, setBpm] = useState(DEFAULT_BPM.toString());
@@ -156,7 +156,7 @@ export default function ChordedApp() {
     [fromNotation, notations]
   );
 
-  const toNotationObj = useMemo(
+  const toNotationObj: ChordNotation = useMemo(
     () => notations.find(n => n.name.en === toNotation) ?? notations[0],
     [toNotation, notations]
   );
@@ -214,17 +214,41 @@ export default function ChordedApp() {
   return (
     <div className="grid gap-6">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Key</label>
-          <select
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            value={key}
-            onChange={(event) => setKey(event.target.value)}
-          >
-            {KEY_OPTIONS.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
+        <div className="md:col-span-5">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Key</label>
+          <div className="grid grid-cols-[repeat(15,minmax(0,1fr))] gap-1">
+            {KEYS.map(natural => {
+              if (natural.length == 1) {
+                return (
+                  <button
+                    type="button"
+                    onClick={() => setKey(natural[0])}
+                    className={`h-12 rounded-lg border text-sm font-medium ${key === natural[0] ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                  >
+                    {natural}
+                  </button>
+                );
+              }
+              return (
+                <div className="flex flex-col overflow-hidden rounded-lg border border-gray-300">
+                  <button
+                    type="button"
+                    onClick={() => setKey(natural[0])}
+                    className={`flex-1 text-xs font-medium border-b border-gray-300 ${key === natural[0] ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    {natural[0]}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setKey(natural[1])}
+                    className={`flex-1 text-xs font-medium ${key === natural[1] ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    {natural[1]}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div>
@@ -316,7 +340,13 @@ export default function ChordedApp() {
                 }
 
                 if (item.chord) {
-                  const display = toNotationObj.display(item.chord, keyNote);
+                  let display;
+                  if (toNotationObj.display) {
+                    display = toNotationObj.display(item.chord, key);
+                  } else {
+                    const regular = new RegularChordNotation();
+                    display = regular.display(item.chord, key);
+                  }
                   console.log(item.chord);
                   const notes = formatChordNotes(item.chord.getNotes());
                   return (
@@ -349,6 +379,6 @@ export default function ChordedApp() {
           ))}
         </div>
       </div>
-    </div>
+    </div >
   );
 }

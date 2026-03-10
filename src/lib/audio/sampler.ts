@@ -149,7 +149,7 @@ export class PianoSampler {
     gainNode.gain.setValueAtTime(velocity * 0.5, now + duration - releaseTime);
     gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-    source.stop(now + duration + 0.1);
+    source.stop(now + duration);
   }
 
   async playNotes(notes: Note[], duration: number): Promise<void> {
