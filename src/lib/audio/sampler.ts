@@ -150,8 +150,64 @@ export class PianoSampler {
     source.stop(startTime + duration);
   }
 
+  async playNoteSustain(note: Note, velocity: number = 0.7): Promise<{ source: AudioBufferSourceNode; gainNode: GainNode } | null> {
+    const ctx = this.getAudioContext();
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+
+    const sample = this.getClosestSample(note);
+
+    let buffer: AudioBuffer;
+    try {
+      buffer = await this.loadSample(sample.path);
+    } catch {
+      return null;
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
+    const sampleAbsolute = sample.value + (sample.octave - 1) * 12;
+    const targetAbsolute = note.value + (note.octave - 1) * 12;
+    const semitoneShift = targetAbsolute - sampleAbsolute;
+
+    if (semitoneShift !== 0) {
+      source.playbackRate.value = Math.pow(2, semitoneShift / 12);
+    }
+
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = velocity * 0.5;
+
+    source.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    source.start(ctx.currentTime);
+    return { source, gainNode };
+  }
+
   async playNotesAt(notes: Note[], startTime: number, duration: number): Promise<void> {
     await Promise.all(notes.map(note => this.playNoteAt(note, startTime, duration)));
+  }
+
+  /** Play notes for the length of the original source ogg files */
+  async playNotesSustain(notes: Note[], velocity: number = 0.7): Promise<Array<{ source: AudioBufferSourceNode; gainNode: GainNode }>> {
+    const results = await Promise.all(notes.map(note => this.playNoteSustain(note, velocity)));
+    return results.filter((result): result is { source: AudioBufferSourceNode; gainNode: GainNode } => result !== null);
+  }
+
+  stopSustainedNotes(notes: Array<{ source: AudioBufferSourceNode; gainNode: GainNode }>, releaseTime: number = 0.08): void {
+    const ctx = this.getAudioContext();
+    const now = ctx.currentTime;
+    for (const { source, gainNode } of notes) {
+      try {
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + releaseTime);
+        source.stop(now + releaseTime);
+      } catch {
+        // noop
+      }
+    }
   }
 
   stopAll(): void {

@@ -4,7 +4,7 @@ import type { ParsedChord, ParsedInput } from '../lib/parser';
 import { formatChordNotes, type ChordNotation, Chord, NOTATIONS } from '../lib/chord';
 import { Note } from '../lib/note';
 import { semitonesFromAccidentals } from '../lib/parseutil';
-import { initPiano, playChords, setClickEnabled, stopPlayback } from '../lib/audio/player';
+import { initPiano, playChords, setClickEnabled, startChordSustain, stopChordSustain, stopPlayback } from '../lib/audio/player';
 import RegularChordNotation from '../lib/notations/regular';
 import RomanChordNotation from '../lib/notations/roman';
 
@@ -166,22 +166,6 @@ export default function ChordedApp() {
     return buildParsedInput(input, beatsInBarValue, fromNotationObj, keyNote);
   }, [input, beatsInBarValue, fromNotationObj, keyNote]);
 
-  useEffect(() => {
-    console.log('[Chord Parser] Input:', input);
-    console.log('[Chord Parser] Key:', key);
-    console.log('[Chord Parser] Beats in Bar:', beatsInBarValue);
-  }, [input, key, beatsInBarValue]);
-
-  useEffect(() => {
-    parsed.bars.forEach(bar => {
-      bar.forEach(item => {
-        if (!item.chord) return;
-        const notes = item.chord.getNotes();
-        console.log(`[Chord Parser] Parsed: "${item.chord.base.toString()}" → Notes: [${formatChordNotes(notes)}]`);
-      });
-    });
-  }, [parsed]);
-
   const startPlayback = useCallback(async () => {
     if (isPlaying) {
       stopPlayback();
@@ -194,7 +178,6 @@ export default function ChordedApp() {
       setIsPlaying(true);
       await playChords(
         parsed,
-        { root: keyNote, type: 'minor', notes: [] },
         parseInt(bpm, 10) || DEFAULT_BPM,
         beatsInBarValue
       );
@@ -203,7 +186,20 @@ export default function ChordedApp() {
     } finally {
       setIsPlaying(false);
     }
-  }, [bpm, isPlaying, keyNote, parsed]);
+  }, [bpm, isPlaying, parsed, beatsInBarValue]);
+
+  const handleChordPress = useCallback(async (chord: Chord) => {
+    try {
+      await initPiano();
+      await startChordSustain(chord);
+    } catch (err) {
+      console.error('Playback error:', err);
+    }
+  }, [bpm]);
+
+  const handleChordRelease = useCallback(() => {
+    stopChordSustain();
+  }, []);
 
   const stop = useCallback(() => {
     stopPlayback();
@@ -366,14 +362,20 @@ export default function ChordedApp() {
                   }
                   const notes = formatChordNotes(item.chord.getNotes());
                   return (
-                    <span
+                    <button
                       key={`chord-${barIndex}-${idx}`}
-                      className="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-900 hover:bg-indigo-100 cursor-help relative"
+                      type="button"
+                      onMouseDown={() => handleChordPress(item.chord!)}
+                      onMouseUp={handleChordRelease}
+                      onMouseLeave={handleChordRelease}
+                      onTouchStart={() => handleChordPress(item.chord!)}
+                      onTouchEnd={handleChordRelease}
+                      className="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-900 hover:bg-indigo-100 cursor-pointer relative"
                       title={notes}
                     >
                       {display}
                       <span className="text-xs ml-1 opacity-60 select-none">{formatBeatDuration(item.duration)}</span>
-                    </span>
+                    </button>
                   );
                 }
 

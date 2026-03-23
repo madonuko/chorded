@@ -1,6 +1,5 @@
 import type { ParsedInput } from '../parser';
 import type { Chord } from '../chord';
-import type { Scale } from '../scales';
 import { PianoSampler } from './sampler';
 
 const CLICK_SAMPLE_PATH = '/mouse-click.wav';
@@ -11,6 +10,7 @@ class AudioGlobals {
   clickEnabled = false;
   clickBuffer: AudioBuffer | null = null;
   clickLoadingPromise: Promise<AudioBuffer> | null = null;
+  sustainedNotes: Array<{ source: AudioBufferSourceNode; gainNode: GainNode }> = [];
 
   static instance: AudioGlobals | null = null;
 
@@ -73,7 +73,6 @@ export function setClickEnabled(enabled: boolean): void {
 
 export async function playChords(
   parsed: ParsedInput,
-  scale: Scale,
   bpm: number,
   beatsInBar: number
 ): Promise<void> {
@@ -185,6 +184,36 @@ export async function playChords(
   };
 
   requestAnimationFrame(tick);
+}
+
+export async function playChordOnce(chord: Chord, bpm: number, beats: number): Promise<void> {
+  if (!globals.sampler) await initPiano();
+  if (!globals.sampler) throw new Error('Sampler not initialized');
+
+  const beatDuration = 60 / bpm;
+  const ctx = globals.sampler.getAudioContext();
+  const startAt = ctx.currentTime + 0.02;
+  const duration = beatDuration * beats * 2;
+  await globals.sampler.playNotesAt(chord.getNotes(), startAt, duration);
+}
+
+export async function startChordSustain(chord: Chord): Promise<void> {
+  if (!globals.sampler) await initPiano();
+  if (!globals.sampler) throw new Error('Sampler not initialized');
+
+  if (globals.sustainedNotes.length > 0) {
+    globals.sampler.stopSustainedNotes(globals.sustainedNotes);
+    globals.sustainedNotes = [];
+  }
+
+  globals.sustainedNotes = await globals.sampler.playNotesSustain(chord.getNotes());
+}
+
+export function stopChordSustain(): void {
+  if (!globals.sampler) return;
+  if (globals.sustainedNotes.length === 0) return;
+  globals.sampler.stopSustainedNotes(globals.sustainedNotes);
+  globals.sustainedNotes = [];
 }
 
 export function stopPlayback(): void {
