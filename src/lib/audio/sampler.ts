@@ -35,7 +35,7 @@ export class PianoSampler {
             note,
             octave,
             value: noteobj.value,
-            path: `/piano/${sampleName}v12.ogg`
+            path: `/chorded/piano/${sampleName}v12.ogg`
           });
         }
       }

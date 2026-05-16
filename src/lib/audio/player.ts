@@ -2,7 +2,7 @@ import type { ParsedInput } from '../parser';
 import type { Chord } from '../chord';
 import { PianoSampler } from './sampler';
 
-const CLICK_SAMPLE_PATH = '/mouse-click.wav';
+const CLICK_SAMPLE_PATH = '/chorded/mouse-click.wav';
 
 class AudioGlobals {
   sampler: PianoSampler | null = null;
